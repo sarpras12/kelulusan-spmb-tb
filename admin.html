@@ -145,7 +145,7 @@
       $("login-status").textContent = "Memeriksa...";
       signInWithEmailAndPassword(auth, email, pass)
         .then(function () { $("login-status").textContent = ""; })
-        .catch(function () { $("login-status").textContent = "Email atau password salah."; })
+        .catch(function (e) { $("login-status").textContent = "Gagal masuk: " + e.code; })
         .finally(function () { $("btnLogin").disabled = false; });
     }
 
