@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Pengumuman SPMB - SMP Taruna Bakti</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      :root{
+        --tb-navy:   #033769;
+        --tb-navy-dk:#02284D;
+        --tb-blue:   #4298D3;
+        --tb-blue-dk:#3480B8;
+        --tb-orange: #FCB42A;
+        --tb-orange-dk:#D69924;
+        --tb-white:  #FFFFFF;
+      }
+      @media print {
+        body * { visibility: hidden; }
+        .result-card, .result-card * { visibility: visible; }
+        .result-card {
+          position: absolute; left: 0; top: 0; width: 100%;
+          border: none !important; box-shadow: none !important; background: white !important;
+        }
+        .result-card button { display: none !important; }
+      }
+      body {
+        background: radial-gradient(ellipse at 50% 55%, #3D82BE 0%, #1B4E82 25%, #0A2E52 50%, #050B14 80%, #020408 100%);
+        background-attachment: fixed;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        display: flex; align-items: center; justify-content: center;
+        margin: 0; padding: 20px;
+      }
+      .card-login {
+        width: 100%; max-width: 500px; padding: 35px;
+        background: var(--tb-white); border-radius: 16px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+        border-top: 6px solid var(--tb-navy);
+      }
+      .header-logo { font-weight: 700; color: var(--tb-navy); }
+      .form-label { font-size: 0.95rem; }
+      .form-control { font-size: 1.05rem; padding: 10px 14px; }
+      .form-control:focus { border-color: var(--tb-blue); box-shadow: 0 0 0 0.25rem rgba(66,152,211,0.25); }
+      .btn-primary {
+        font-size: 1.05rem; padding: 12px;
+        background-color: var(--tb-orange); border-color: var(--tb-orange);
+        color: var(--tb-navy); font-weight: 600;
+      }
+      .btn-primary:hover, .btn-primary:focus, .btn-primary:active {
+        background-color: var(--tb-orange-dk) !important;
+        border-color: var(--tb-orange-dk) !important;
+        color: var(--tb-navy) !important;
+      }
+      .btn-outline-primary { color: var(--tb-navy); border-color: var(--tb-navy); }
+      .btn-outline-primary:hover { background-color: var(--tb-navy); border-color: var(--tb-navy); color: var(--tb-white); }
+      .alert-primary { background-color: #E9F3FB; border: 1px solid var(--tb-blue); color: var(--tb-navy); }
+      #countdown-timer { color: var(--tb-blue); }
+      img { max-width: 100%; height: auto; }
+      .result-card {
+        background: #f8fafc; border: 1px solid #cbd5e1;
+        border-left: 5px solid var(--tb-navy);
+        border-radius: 8px; padding: 20px; margin-top: 20px;
+      }
+    </style>
+</head>
+<body>
+
+    <div class="card-login">
+        <div class="text-center mb-4">
+            <img src="https://lh3.googleusercontent.com/d/1hPMqlL8UR01p8UIaGbZJ82x9uA3hoxeB" alt="Logo SMP Taruna Bakti" style="max-height: 75px;" class="mb-2">
+            <h4 class="header-logo mb-1 fs-4">SMP TARUNA BAKTI</h4>
+            <p class="text-muted mb-0">Portal Resmi Pengumuman SPMB</p>
+        </div>
+
+        <div class="alert alert-primary text-center mb-4 py-3 px-3" id="countdown-box" role="alert">
+            <span id="info-pengumuman" class="d-block mb-1" style="font-size: 0.95rem;">Memuat informasi...</span>
+            <div id="countdown-timer" class="fw-bold text-primary" style="font-size: 1.1rem;"></div>
+        </div>
+
+        <form id="formCekKelulusan">
+            <div class="mb-3">
+                <label for="no_pendaftaran" class="form-label fw-semibold">Nomor Pendaftaran</label>
+                <input type="text" class="form-control" id="no_pendaftaran" name="no_pendaftaran" placeholder="Contoh: 2728000" required>
+            </div>
+            <div class="mb-4">
+                <label for="tanggal_lahir" class="form-label fw-semibold">Tanggal Lahir</label>
+                <input type="date" class="form-control" id="tanggal_lahir" name="tanggal_lahir" required>
+            </div>
+            <div class="d-grid">
+                <button type="submit" id="btnCek" class="btn btn-primary fw-semibold shadow-sm">Cek Status Kelulusan</button>
+            </div>
+        </form>
+
+        <div id="hasilPencarian"></div>
+
+        <div class="text-center mt-4">
+            <small class="text-muted" style="font-size: 0.85rem;">&copy; 2026 Panitia SPMB SMP Taruna Bakti</small>
+        </div>
+    </div>
+
+    <script>
+        // ====== GANTI DENGAN URL WEB APP APPS SCRIPT ANDA ======
+        var API_URL = "https://script.google.com/macros/s/GANTI_DENGAN_DEPLOYMENT_ID/exec";
+        // =======================================================
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        // Kirim POST sebagai text/plain agar tidak memicu preflight CORS
+        function apiPost(payload) {
+            return fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            }).then(function(r) { return r.json(); });
+        }
+
+        // 1. Ambil pengaturan (info + target tanggal) lalu jalankan countdown
+        function mulaiCountdown(targetDateStr) {
+            var countDownDate = new Date(targetDateStr).getTime();
+            var el = document.getElementById("countdown-timer");
+
+            function tick() {
+                var distance = countDownDate - new Date().getTime();
+                if (isNaN(distance)) { el.textContent = ""; return true; }
+                if (distance < 0) {
+                    el.textContent = "PENGUMUMAN TELAH DIBUKA!";
+                    return true;
+                }
+                var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                el.textContent = days + " hari " + hours + " jam " + minutes + " menit " + seconds + " detik lagi";
+                return false;
+            }
+
+            if (tick()) return;
+            var x = setInterval(function() { if (tick()) clearInterval(x); }, 1000);
+        }
+
+        fetch(API_URL)
+            .then(function(r) { return r.json(); })
+            .then(function(s) {
+                document.getElementById("info-pengumuman").textContent = s.infoText || "";
+                mulaiCountdown(s.targetDate);
+            })
+            .catch(function() {
+                document.getElementById("info-pengumuman").textContent = "Selamat datang di portal pengumuman SPMB.";
+            });
+
+        // 2. Pencarian data siswa
+        document.getElementById('formCekKelulusan').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var noPendaftaran = document.getElementById('no_pendaftaran').value;
+            var tanggalLahir = document.getElementById('tanggal_lahir').value;
+            var btnCek = document.getElementById('btnCek');
+            var divHasil = document.getElementById('hasilPencarian');
+
+            btnCek.disabled = true;
+            btnCek.textContent = "Mencari data...";
+            divHasil.innerHTML = "";
+
+            apiPost({ action: 'cek', nomor: noPendaftaran, tanggal: tanggalLahir })
+                .then(function(response) {
+                    btnCek.disabled = false;
+                    btnCek.textContent = "Cek Status Kelulusan";
+
+                    if (response.found) {
+                        var statusText = String(response.status || '').toUpperCase();
+                        var isLulus = statusText.includes('LULUS') && !statusText.includes('TIDAK');
+                        var badgeColor = isLulus ? '#198754' : '#dc3545';
+                        var statusTitle = isLulus ? 'SELAMAT, ANANDA DINYATAKAN LULUS' : 'MOHON MAAF, ANANDA DINYATAKAN TIDAK LULUS';
+
+                        divHasil.innerHTML = `
+                            <div class="result-card">
+                                <div class="text-center mb-3 pb-2 border-bottom">
+                                    <h6 class="fw-bold text-dark mb-0" style="font-size: 0.85rem; letter-spacing: 0.5px;">YAYASAN TARUNA BAKTI</h6>
+                                    <h5 class="fw-bold text-primary mb-1" style="font-size: 1.05rem;">SMP TARUNA BAKTI BANDUNG</h5>
+                                    <p class="text-muted small mb-2" style="font-size: 0.7rem;">Surat Keterangan Hasil Seleksi Penerimaan Murid Baru (SPMB)</p>
+                                    <img src="https://lh3.googleusercontent.com/d/1hPMqlL8UR01p8UIaGbZJ82x9uA3hoxeB" alt="Logo" style="max-height: 50px;" class="my-1">
+                                </div>
+
+                                <h6 class="fw-bold mb-3 text-center" style="color: ${badgeColor}; font-size: 0.9rem;">${statusTitle}</h6>
+
+                                <table class="table table-sm table-borderless mb-3" style="font-size: 0.9rem;">
+                                    <tr>
+                                        <td class="fw-semibold text-secondary" style="width: 38%;">Nomor Pendaftaran</td>
+                                        <td>: <strong>${escapeHtml(noPendaftaran)}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold text-secondary">Nama Siswa</td>
+                                        <td>: <strong>${escapeHtml(response.nama)}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold text-secondary">Jalur Masuk</td>
+                                        <td>: ${escapeHtml(response.jalur)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold text-secondary">Status</td>
+                                        <td>: <span class="badge" style="background-color: ${badgeColor}; font-size: 0.85rem; padding: 4px 10px;">${escapeHtml(statusText)}</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-semibold text-secondary">Keterangan / Tindak Lanjut</td>
+                                        <td>: ${escapeHtml(response.keterangan || '-')}</td>
+                                    </tr>
+                                </table>
+
+                                <div class="d-grid gap-2 mt-4">
+                                    <button onclick="window.print()" class="btn btn-outline-primary fw-semibold btn-sm py-2">
+                                        🖨️ Cetak / Simpan Surat Kelulusan (PDF)
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        var pesan = response.message || "Data tidak ditemukan. Periksa kembali nomor pendaftaran dan tanggal lahir.";
+                        divHasil.innerHTML = '<div class="alert alert-warning text-center mt-3 p-3">' + escapeHtml(pesan) + '</div>';
+                    }
+                })
+                .catch(function() {
+                    btnCek.disabled = false;
+                    btnCek.textContent = "Cek Status Kelulusan";
+                    divHasil.innerHTML = '<div class="alert alert-danger text-center mt-3 p-3">Terjadi kesalahan sistem.</div>';
+                });
+        });
+    </script>
+</body>
+</html>
