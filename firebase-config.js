@@ -7,10 +7,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "GANTI_API_KEY",
-  authDomain: "GANTI_PROJECT_ID.firebaseapp.com",
-  projectId: "GANTI_PROJECT_ID",
-  appId: "GANTI_APP_ID"
+  apiKey: "AIzaSyBv_DY54jrMJ_c2iwJp0i3Twv4GqN-Vlok",
+  authDomain: "kelulusan-7bbd5.firebaseapp.com",
+  projectId: "kelulusan-7bbd5",
+  storageBucket: "kelulusan-7bbd5.firebasestorage.app",
+  messagingSenderId: "920968626430",
+  appId: "1:920968626430:web:d2ae6b566204420bc725af",
+  measurementId: "G-KQF79LJ5F6"
 };
 
 export const app = initializeApp(firebaseConfig);
