@@ -11,10 +11,8 @@
       --tb-navy:   #033769;
       --tb-navy-dk:#02284D;
       --tb-blue:   #4298D3;
-      --tb-blue-dk:#3480B8;
       --tb-orange: #FCB42A;
       --tb-orange-dk:#D69924;
-      --tb-white:  #FFFFFF;
     }
     body {
       background: radial-gradient(ellipse at 50% 55%, #3D82BE 0%, #1B4E82 25%, #0A2E52 50%, #050B14 80%, #020408 100%);
@@ -39,7 +37,7 @@
 <body class="py-5">
   <div class="container">
     <div class="row justify-content-center">
-      <div class="col-md-7">
+      <div class="col-md-8">
         <div class="card p-4 bg-white">
           <h3 class="text-center mb-1">Panel Admin SPMB</h3>
           <p class="text-center text-muted mb-4">SMP Taruna Bakti</p>
@@ -47,174 +45,267 @@
           <!-- LOGIN -->
           <div id="login-box">
             <div class="mb-3">
-              <label class="form-label">Password Admin</label>
-              <input type="password" id="adminPassword" class="form-control" placeholder="Masukkan password...">
+              <label class="form-label">Email Admin</label>
+              <input type="email" id="adminEmail" class="form-control" autocomplete="username">
             </div>
-            <button onclick="loginAdmin()" class="btn btn-dark w-100" id="btnLogin">Masuk Panel</button>
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              <input type="password" id="adminPassword" class="form-control" autocomplete="current-password">
+            </div>
+            <button id="btnLogin" class="btn btn-dark w-100">Masuk Panel</button>
             <div id="login-status" class="mt-2 text-danger text-center small"></div>
           </div>
 
-          <!-- PANEL ADMIN -->
+          <!-- PANEL -->
           <div id="admin-panel" style="display: none;">
 
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <small class="text-muted" id="adminInfo"></small>
+              <button id="btnLogout" class="btn btn-outline-secondary btn-sm">Keluar</button>
+            </div>
+
+            <!-- 1. PENGATURAN -->
             <div class="mb-4 p-3 border rounded bg-light">
               <h5 class="mb-3 text-primary">Pengaturan Pengumuman</h5>
               <div class="mb-3">
-                <label class="form-label small">Target Tanggal & Jam Countdown (Format: Bulan Hari, Tahun Jam:Menit:Detik)</label>
-                <input type="text" id="targetDateInput" class="form-control form-control-sm" placeholder="Contoh: Jun 10, 2026 10:00:00">
+                <label class="form-label small">Waktu pengumuman dibuka (sesuai jam di perangkat ini)</label>
+                <input type="datetime-local" id="bukaAtInput" class="form-control form-control-sm">
+                <div class="form-text">Sebelum waktu ini, server menolak pengecekan data siswa. Wajib diisi.</div>
               </div>
               <div class="mb-3">
-                <label class="form-label small">Pesan Informasi / Pengumuman (Tampil di halaman siswa)</label>
+                <label class="form-label small">Pesan informasi (tampil di halaman siswa)</label>
                 <textarea id="infoTextInput" class="form-control form-control-sm" rows="3" placeholder="Tulis pengumuman di sini..."></textarea>
               </div>
-              <button onclick="simpanPengaturan()" class="btn btn-success btn-sm w-100" id="btnSimpan">Simpan Pengaturan</button>
+              <button id="btnSimpan" class="btn btn-success btn-sm w-100">Simpan Pengaturan</button>
               <div id="settings-status" class="mt-2 small text-center"></div>
             </div>
 
+            <!-- 2. UPLOAD -->
             <div class="mb-3 p-3 border rounded bg-light">
-              <h5 class="mb-3 text-primary">Upload Data Kelulusan (.xlsx / .csv)</h5>
+              <h5 class="mb-2 text-primary">Upload Data Kelulusan (.xlsx / .csv)</h5>
+              <p class="small text-muted mb-2">
+                Urutan kolom: <b>A</b> Nomor Pendaftaran, <b>B</b> Tanggal Lahir, <b>C</b> Nama, <b>D</b> Jalur, <b>E</b> Status, <b>F</b> Keterangan. Baris pertama dianggap judul.
+                Untuk CSV, tulis tanggal lahir sebagai YYYY-MM-DD.
+              </p>
               <div class="mb-2">
-                <input type="file" id="excelFile" class="form-control form-control-sm" accept=".xlsx, .xls, .csv">
+                <input type="file" id="excelFile" class="form-control form-control-sm" accept=".xlsx,.xls,.csv">
               </div>
-              <button onclick="uploadExcel()" class="btn btn-dark btn-sm w-100" id="btnUpload">Upload & Aktifkan Data</button>
+              <div id="preview" class="small mb-2"></div>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="hapusLama" checked>
+                <label class="form-check-label small" for="hapusLama">Hapus data lama sebelum mengunggah (disarankan)</label>
+              </div>
+              <button id="btnUpload" class="btn btn-dark btn-sm w-100" disabled>Upload & Aktifkan Data</button>
               <div id="upload-status" class="mt-2 small text-center"></div>
             </div>
 
             <div class="text-center mt-3">
               <a href="index.html" target="_blank" class="text-decoration-none small">Lihat Halaman Utama Siswa ↗</a>
             </div>
-
           </div>
+
         </div>
       </div>
     </div>
   </div>
 
-  <script>
-    // ====== GANTI DENGAN URL WEB APP APPS SCRIPT ANDA ======
-    var API_URL = "https://script.google.com/macros/s/AKfycbx7QDrwLuylzLr1aR0yqg_H-SIJZ1I8Ss7TXtdSlR32SMxmsLuq3irmlkmU3pH5XLlOzA/exec";
-    // =======================================================
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script type="module">
+    import { app, db, hashId } from "./firebase-config.js";
+    import {
+      getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+    import {
+      doc, getDoc, setDoc, collection, getDocs, writeBatch, Timestamp, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-    var adminPass = ""; // disimpan di memori saja selama halaman terbuka
+    var auth = getAuth(app);
+    var dataTerbaca = []; // hasil parsing file, siap diunggah
 
-    function apiPost(payload) {
-      return fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      }).then(function(r) { return r.json(); });
+    function $(id) { return document.getElementById(id); }
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
-
     function setStatus(el, ok, msg) {
+      el.className = "mt-2 small text-center " + (ok ? "text-success" : "text-danger");
       el.textContent = msg;
-      el.className = (el.className.replace(/\btext-(success|danger)\b/g, '').trim()) + (ok ? ' text-success' : ' text-danger');
     }
 
-    function loginAdmin() {
-      var pass = document.getElementById("adminPassword").value;
-      var statusDiv = document.getElementById("login-status");
-      var btn = document.getElementById("btnLogin");
+    // ---------- LOGIN ----------
+    $("btnLogin").addEventListener("click", masuk);
+    $("adminPassword").addEventListener("keydown", function (e) { if (e.key === "Enter") masuk(); });
+    $("btnLogout").addEventListener("click", function () { signOut(auth); });
 
-      if (!pass) {
-        statusDiv.textContent = "Password tidak boleh kosong!";
-        return;
+    function masuk() {
+      var email = $("adminEmail").value.trim();
+      var pass = $("adminPassword").value;
+      if (!email || !pass) { $("login-status").textContent = "Email dan password wajib diisi."; return; }
+      $("btnLogin").disabled = true;
+      $("login-status").textContent = "Memeriksa...";
+      signInWithEmailAndPassword(auth, email, pass)
+        .then(function () { $("login-status").textContent = ""; })
+        .catch(function () { $("login-status").textContent = "Email atau password salah."; })
+        .finally(function () { $("btnLogin").disabled = false; });
+    }
+
+    onAuthStateChanged(auth, function (user) {
+      if (user) {
+        $("login-box").style.display = "none";
+        $("admin-panel").style.display = "block";
+        $("adminInfo").textContent = "Masuk sebagai " + user.email;
+        muatPengaturan();
+      } else {
+        $("login-box").style.display = "block";
+        $("admin-panel").style.display = "none";
+        $("adminPassword").value = "";
       }
-
-      btn.disabled = true;
-      statusDiv.textContent = "Memeriksa...";
-
-      apiPost({ action: 'login', password: pass })
-        .then(function(res) {
-          btn.disabled = false;
-          if (res.success) {
-            adminPass = pass;
-            document.getElementById("login-box").style.display = "none";
-            document.getElementById("admin-panel").style.display = "block";
-            loadPengaturanData();
-          } else {
-            statusDiv.textContent = res.message || "Login gagal.";
-          }
-        })
-        .catch(function() {
-          btn.disabled = false;
-          statusDiv.textContent = "Tidak dapat terhubung ke server.";
-        });
-    }
-
-    // Tekan Enter untuk login
-    document.getElementById("adminPassword").addEventListener("keydown", function(e) {
-      if (e.key === "Enter") loginAdmin();
     });
 
-    function loadPengaturanData() {
-      apiPost({ action: 'getPengaturan', password: adminPass })
-        .then(function(data) {
-          if (data.success) {
-            document.getElementById("targetDateInput").value = data.targetDate;
-            document.getElementById("infoTextInput").value = data.infoText;
-          }
-        });
+    // ---------- PENGATURAN ----------
+    function keInputLokal(date) {
+      return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
+             "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
     }
 
-    function simpanPengaturan() {
-      var targetDate = document.getElementById("targetDateInput").value;
-      var infoText = document.getElementById("infoTextInput").value;
-      var statusDiv = document.getElementById("settings-status");
-      var btn = document.getElementById("btnSimpan");
-
-      btn.disabled = true;
-      statusDiv.className = "mt-2 small text-center";
-      statusDiv.textContent = "Menyimpan...";
-
-      apiPost({ action: 'simpanPengaturan', targetDate: targetDate, infoText: infoText, password: adminPass })
-        .then(function(res) {
-          btn.disabled = false;
-          setStatus(statusDiv, res.success, res.message);
-        })
-        .catch(function() {
-          btn.disabled = false;
-          setStatus(statusDiv, false, "Gagal terhubung ke server.");
-        });
-    }
-
-    function uploadExcel() {
-      var fileInput = document.getElementById("excelFile");
-      var statusDiv = document.getElementById("upload-status");
-      var btn = document.getElementById("btnUpload");
-
-      if (fileInput.files.length === 0) {
-        alert("Pilih file Excel terlebih dahulu!");
-        return;
+    async function muatPengaturan() {
+      try {
+        var snap = await getDoc(doc(db, "pengaturan", "umum"));
+        if (!snap.exists()) return;
+        var s = snap.data();
+        $("infoTextInput").value = s.infoText || "";
+        if (s.bukaAt && s.bukaAt.toDate) $("bukaAtInput").value = keInputLokal(s.bukaAt.toDate());
+      } catch (e) {
+        setStatus($("settings-status"), false, "Gagal memuat pengaturan: " + e.code);
       }
-
-      var file = fileInput.files[0];
-      var reader = new FileReader();
-
-      btn.disabled = true;
-      statusDiv.className = "mt-2 small text-center";
-      statusDiv.textContent = "Mengunggah file...";
-
-      reader.onload = function(e) {
-        // hasil DataURL: "data:...;base64,XXXX" -> ambil bagian base64
-        var base64 = e.target.result.split(',')[1];
-        apiPost({
-          action: 'upload',
-          password: adminPass,
-          data: base64,
-          mimeType: file.type,
-          fileName: file.name
-        })
-        .then(function(res) {
-          btn.disabled = false;
-          setStatus(statusDiv, res.success, res.message);
-        })
-        .catch(function() {
-          btn.disabled = false;
-          setStatus(statusDiv, false, "Gagal terhubung ke server.");
-        });
-      };
-      reader.readAsDataURL(file);
     }
+
+    $("btnSimpan").addEventListener("click", async function () {
+      var nilai = $("bukaAtInput").value;
+      var st = $("settings-status");
+      if (!nilai) { setStatus(st, false, "Waktu pengumuman wajib diisi."); return; }
+      this.disabled = true;
+      st.textContent = "Menyimpan...";
+      try {
+        await setDoc(doc(db, "pengaturan", "umum"), {
+          bukaAt: Timestamp.fromDate(new Date(nilai)),
+          infoText: $("infoTextInput").value
+        }, { merge: true });
+        setStatus(st, true, "Pengaturan berhasil disimpan!");
+      } catch (e) {
+        setStatus(st, false, "Gagal menyimpan: " + (e.code || e.message));
+      }
+      this.disabled = false;
+    });
+
+    // ---------- BACA FILE ----------
+    function normTanggal(v) {
+      if (v === null || v === undefined || v === "") return null;
+      if (v instanceof Date) return v.getFullYear() + "-" + pad(v.getMonth() + 1) + "-" + pad(v.getDate());
+      if (typeof v === "number") {
+        var d = XLSX.SSF.parse_date_code(v);
+        return d ? d.y + "-" + pad(d.m) + "-" + pad(d.d) : null;
+      }
+      var s = String(v).trim();
+      var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) return m[1] + "-" + pad(m[2]) + "-" + pad(m[3]);
+      m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/); // DD/MM/YYYY
+      if (m) return m[3] + "-" + pad(m[2]) + "-" + pad(m[1]);
+      return null;
+    }
+
+    $("excelFile").addEventListener("change", async function () {
+      dataTerbaca = [];
+      $("btnUpload").disabled = true;
+      $("upload-status").textContent = "";
+      var file = this.files[0];
+      if (!file) { $("preview").innerHTML = ""; return; }
+
+      try {
+        var buf = await file.arrayBuffer();
+        var wb = XLSX.read(buf, { type: "array" });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var baris = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: "" });
+
+        var ids = {}, dobel = 0, dilewati = [];
+        for (var i = 1; i < baris.length; i++) {
+          var r = baris[i];
+          var nomor = String(r[0] === undefined ? "" : r[0]).trim();
+          if (!nomor && !r[2]) continue; // baris kosong
+          var tgl = normTanggal(r[1]);
+          if (!nomor || !tgl || !r[2]) { dilewati.push(i + 1); continue; }
+          var id = await hashId(nomor, tgl);
+          if (ids[id]) { dobel++; continue; }
+          ids[id] = true;
+          dataTerbaca.push({
+            id: id, nomor: nomor, tgl: tgl,
+            nama: String(r[2]).trim(), jalur: String(r[3] || "").trim(),
+            status: String(r[4] || "").trim(), keterangan: String(r[5] || "").trim()
+          });
+        }
+
+        var html = "<b>" + dataTerbaca.length + "</b> data siap diunggah.";
+        if (dobel) html += " <span class='text-warning'>" + dobel + " duplikat diabaikan.</span>";
+        if (dilewati.length) html += " <span class='text-danger'>Baris dilewati (data tidak lengkap / tanggal tidak terbaca): " +
+          dilewati.slice(0, 15).join(", ") + (dilewati.length > 15 ? ", ..." : "") + "</span>";
+        html += "<div class='table-responsive mt-2'><table class='table table-sm table-bordered mb-0'>" +
+          "<thead><tr><th>No. Daftar</th><th>Tgl Lahir (terbaca)</th><th>Nama</th><th>Status</th></tr></thead><tbody>";
+        dataTerbaca.slice(0, 5).forEach(function (d) {
+          html += "<tr><td>" + esc(d.nomor) + "</td><td>" + d.tgl + "</td><td>" + esc(d.nama) + "</td><td>" + esc(d.status) + "</td></tr>";
+        });
+        html += "</tbody></table></div><div class='form-text'>Periksa 5 baris pertama: tanggal lahir harus benar.</div>";
+        $("preview").innerHTML = html;
+        $("btnUpload").disabled = dataTerbaca.length === 0;
+      } catch (e) {
+        $("preview").innerHTML = "<span class='text-danger'>Gagal membaca file: " + esc(e.message) + "</span>";
+      }
+    });
+
+    // ---------- UPLOAD KE FIRESTORE ----------
+    async function hapusSemua() {
+      var snap = await getDocs(collection(db, "hasil"));
+      var docs = snap.docs;
+      for (var i = 0; i < docs.length; i += 400) {
+        var b = writeBatch(db);
+        docs.slice(i, i + 400).forEach(function (d) { b.delete(d.ref); });
+        await b.commit();
+      }
+      return docs.length;
+    }
+
+    $("btnUpload").addEventListener("click", async function () {
+      var st = $("upload-status");
+      if (!dataTerbaca.length) return;
+      if (!confirm("Unggah " + dataTerbaca.length + " data" + ($("hapusLama").checked ? " dan hapus data lama" : "") + "?")) return;
+
+      this.disabled = true;
+      try {
+        if ($("hapusLama").checked) {
+          st.className = "mt-2 small text-center"; st.textContent = "Menghapus data lama...";
+          await hapusSemua();
+        }
+        for (var i = 0; i < dataTerbaca.length; i += 400) {
+          st.className = "mt-2 small text-center";
+          st.textContent = "Mengunggah " + Math.min(i + 400, dataTerbaca.length) + " / " + dataTerbaca.length + "...";
+          var b = writeBatch(db);
+          dataTerbaca.slice(i, i + 400).forEach(function (d) {
+            b.set(doc(db, "hasil", d.id), {
+              nama: d.nama, jalur: d.jalur, status: d.status, keterangan: d.keterangan
+            });
+          });
+          await b.commit();
+        }
+        await setDoc(doc(db, "pengaturan", "umum"), {
+          dataSiap: true,
+          jumlahData: dataTerbaca.length,
+          dataDiperbarui: serverTimestamp()
+        }, { merge: true });
+        setStatus(st, true, "Berhasil! " + dataTerbaca.length + " data diunggah dan diaktifkan.");
+      } catch (e) {
+        setStatus(st, false, "Gagal mengunggah: " + (e.code || e.message));
+      }
+      this.disabled = false;
+    });
   </script>
 </body>
 </html>
